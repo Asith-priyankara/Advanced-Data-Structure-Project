@@ -24,14 +24,14 @@ public class Dijkstra {
                 break;
             case "-l":
                 if (args.length != 2) {
-                    System.out.println("Leftist tree mode usage: -l filename");
+                    System.out.println("Leftist tree mode : -l filename");
                     return;
                 }
                 runUserInputMode(args[1], true);
                 break;
             case "-f":
                 if (args.length != 2) {
-                    System.out.println("Fibonacci heap mode usage: -f filename");
+                    System.out.println("Fibonacci heap mode : -f filename");
                     return;
                 }
                 runUserInputMode(args[1], false);
@@ -48,7 +48,7 @@ public class Dijkstra {
         List<Integer> leftistDistances = graph.dijkstraLeftist(source);
         long leftistTime = System.nanoTime() - leftistStartTime;
 
-        System.out.printf("Performance for n=%d, density=%.2f%%:\n", n, density * 100);
+        System.out.printf("Performance metrics for a graph with %d vertices and %.2f%% density:\n", n, density * 100);
 
         long fibonacciStartTime = System.nanoTime();
         List<Integer> fibDistances = graph.dijkstraFibonacci(source);
@@ -56,14 +56,7 @@ public class Dijkstra {
 
         System.out.println();
 
-        boolean success = true;
-        for (int i = 0; i < n; i++) {
-            if (!fibDistances.get(i).equals(leftistDistances.get(i))) {
-                success = false;
-                break;
-            }
-        }
-        if (success) {
+        if (checkDistances(leftistDistances, fibDistances, n)) {
             System.out.printf("Leftist Tree Time: %.3f ms\n", leftistTime / 1_000_000.0);
             System.out.printf("Fibonacci Heap Time: %.3f ms\n", fibonacciTime / 1_000_000.0);
         } else {
@@ -113,8 +106,18 @@ public class Dijkstra {
                 edges.add(new Pair<>(u, v));
             }
         }
-        System.out.println("Generated random graph with " + n + " vertices and " + numEdges + " edges.");
-        return graph;
+        System.out.printf("Successfully generated a random graph with %d vertices, %d edges (%.2f%% density).\n", n, edges.size(), density * 100);        return graph;
+    }
+
+    private static boolean checkDistances(List<Integer> leftistDistances, List<Integer> fibDistances, int n) {
+        boolean success = true;
+        for (int i = 0; i < n; i++) {
+            if (!fibDistances.get(i).equals(leftistDistances.get(i))) {
+                success = false;
+                break;
+            }
+        }
+        return success;
     }
 
     private static class DijkstraAlgorithm {
@@ -135,21 +138,28 @@ public class Dijkstra {
         }
 
         public List<Integer> dijkstraFibonacci(int source) {
-            PriorityQueue<Pair<Integer, Integer>> pq = new PriorityQueue<>(Comparator.comparingInt(Pair::getKey));
+            FibonacciHeap fh = new FibonacciHeap();
             List<Integer> minDist = new ArrayList<>(Collections.nCopies(numVertices, INF));
             minDist.set(source, 0);
-            pq.add(new Pair<>(0, source));
 
-            while (!pq.isEmpty()) {
-                Pair<Integer, Integer> curr = pq.poll();
-                int u = curr.getValue();
+            List<FibonacciHeap.Node> nodes = new ArrayList<>(numVertices);
+
+            for (int i = 0; i < numVertices; i++) {
+                nodes.add(fh.insert(minDist.get(i), i));
+            }
+
+
+            while (!fh.isEmpty()) {
+                FibonacciHeap.Node minNode = fh.extractMin();
+                int u = minNode.value;
 
                 for (Pair<Integer, Integer> edge : graph.get(u)) {
                     int v = edge.getKey();
                     int weight = edge.getValue();
+
                     if (minDist.get(u) + weight < minDist.get(v)) {
                         minDist.set(v, minDist.get(u) + weight);
-                        pq.add(new Pair<>(minDist.get(v), v));
+                        fh.decreaseKey(nodes.get(v), minDist.get(v));
                     }
                 }
             }
@@ -157,7 +167,28 @@ public class Dijkstra {
         }
 
         public List<Integer> dijkstraLeftist(int source) {
-            return dijkstraFibonacci(source);
+            LeftistTree lt = new LeftistTree();
+            List<Integer> minDist = new ArrayList<>(Collections.nCopies(numVertices, INF));
+            minDist.set(source, 0);
+
+            for (int i = 0; i < numVertices; i++) {
+                lt.insert(i, minDist.get(i));
+            }
+
+            while (!lt.isEmpty()) {
+                LeftistTree.Node minNode = lt.deleteMin();
+                int u = minNode.vertex;
+
+                for (Pair<Integer, Integer> edge : graph.get(u)) {
+                    int v = edge.getKey();
+                    int weight = edge.getValue();
+                    if (minDist.get(u) + weight < minDist.get(v)) {
+                        minDist.set(v, minDist.get(u) + weight);
+                        lt.decreaseKey(v, minDist.get(v));
+                    }
+                }
+            }
+            return minDist;
         }
     }
 

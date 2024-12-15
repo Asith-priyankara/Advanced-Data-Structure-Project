@@ -5,19 +5,19 @@ import java.util.List;
 class FibonacciHeap {
     public static class Node {
         int key;
-        int data;
+        int value;
         int degree;
-        boolean childCut;
+        boolean isChildCut;
         Node parent;
         Node child;
         Node left;
         Node right;
 
-        Node(int key, int data) {
+        Node(int key, int value) {
             this.key = key;
-            this.data = data;
+            this.value = value;
             this.degree = 0;
-            this.childCut = false;
+            this.isChildCut = false;
             this.parent = null;
             this.child = null;
             this.left = this;
@@ -25,135 +25,134 @@ class FibonacciHeap {
         }
     }
 
-    private Node min;
-    private int size;
+    private Node minimumNode;
+    private int heapSize;
 
     public FibonacciHeap() {
-        this.min = null;
-        this.size = 0;
+        this.minimumNode = null;
+        this.heapSize = 0;
     }
 
     public Node insert(int key, int value) {
-        Node node = new Node(key, value);
-        if (min == null) {
-            min = node;
+        Node newNode = new Node(key, value);
+        if (minimumNode == null) {
+            minimumNode = newNode;
         } else {
-            mergeWithRootList(node); // Add the new node to the root list
-            if (node.key < min.key) {
-                min = node;
+            mergeWithRootList(newNode);
+            if (newNode.key < minimumNode.key) {
+                minimumNode = newNode;
             }
         }
-        size++;
-        return node;
+        heapSize++;
+        return newNode;
     }
 
-    private void mergeWithRootList(Node node) {
-        if(min == null){
-            min = node;
-        }else{
-            node.left = min;
-            node.right = min.right;
-            min.right.left = node;
-            min.right = node;
-            if (node.key < min.key) {
-                min = node;
-            }
-        }
-    }
-
-    private void removeFromRootList(Node node) {
-        if (node.right == node) {
-            min = null;
+    private void mergeWithRootList(Node newNode) {
+        if (minimumNode == null) {
+            minimumNode = newNode;
         } else {
-            node.left.right = node.right;
-            node.right.left = node.left;
-            if (min == node) {
-                min = node.right;
+            newNode.left = minimumNode;
+            newNode.right = minimumNode.right;
+            minimumNode.right.left = newNode;
+            minimumNode.right = newNode;
+            if (newNode.key < minimumNode.key) {
+                minimumNode = newNode;
             }
         }
     }
 
-    private void removeFromChildList(Node parent, Node node) {
-        if (node.right == node) {
+    private void removeFromRootList(Node nodeToRemove) {
+        if (nodeToRemove.right == nodeToRemove) {
+            minimumNode = null;
+        } else {
+            nodeToRemove.left.right = nodeToRemove.right;
+            nodeToRemove.right.left = nodeToRemove.left;
+            if (minimumNode == nodeToRemove) {
+                minimumNode = nodeToRemove.right;
+            }
+        }
+    }
+
+    private void removeFromChildList(Node parent, Node childToRemove) {
+        if (childToRemove.right == childToRemove) {
             parent.child = null;
         } else {
-            if (parent.child == node) {
-                parent.child = node.right;
+            if (parent.child == childToRemove) {
+                parent.child = childToRemove.right;
             }
-            node.left.right = node.right;
-            node.right.left = node.left;
+            childToRemove.left.right = childToRemove.right;
+            childToRemove.right.left = childToRemove.left;
         }
-        node.left = node.right = node;
+        childToRemove.left = childToRemove.right = childToRemove;
     }
 
-    private Node mergeWithChildList(Node child, Node node) {
-        if (child == null) {
-            return node;
+    private Node mergeWithChildList(Node childList, Node newNode) {
+        if (childList == null) {
+            return newNode;
         } else {
-            node.left = child;
-            node.right = child.right;
-            child.right.left = node;
-            child.right = node;
+            newNode.left = childList;
+            newNode.right = childList.right;
+            childList.right.left = newNode;
+            childList.right = newNode;
         }
-        return child;
+        return childList;
     }
 
     public Node extractMin() {
-        Node z = min;
-        if (z != null) {
-            if (z.child != null) {
-                for (Node x : iterate(z.child)) {
-                    mergeWithRootList(x);
-                    x.parent = null;
+        Node extractedMin = minimumNode;
+        if (extractedMin != null) {
+            if (extractedMin.child != null) {
+                for (Node childNode : iterate(extractedMin.child)) {
+                    mergeWithRootList(childNode);
+                    childNode.parent = null;
                 }
             }
-            removeFromRootList(z);
-            if (z == z.right) {
-                min = null;
+            removeFromRootList(extractedMin);
+            if (extractedMin == extractedMin.right) {
+                minimumNode = null;
             } else {
-                min = z.right;
+                minimumNode = extractedMin.right;
                 consolidate();
             }
-            size--;
+            heapSize--;
         }
-        return z;
+        return extractedMin;
     }
 
-    public void decreaseKey(Node x, int k) {
-        if (k > x.key) {
-            throw new IllegalArgumentException("New key is greater than current key");
+    public void decreaseKey(Node node, int newKey) {
+        if (newKey > node.key) {
+            throw new IllegalArgumentException("Invalid operation: new key (" + newKey + ") cannot be greater than current key (" + node.key + ").");
         }
 
-        x.key = k;
-        Node y = x.parent;
+        node.key = newKey;
+        Node parentNode = node.parent;
 
-        if (y != null && x.key < y.key) {
-            cut(x, y);
-            cascadingCut(y);
+        if (parentNode != null && node.key < parentNode.key) {
+            cut(node, parentNode);
+            cascadingCut(parentNode);
         }
 
-        if (x.key < min.key) {
-            min = x;
+        if (node.key < minimumNode.key) {
+            minimumNode = node;
         }
     }
 
-
-    private void cut(Node x, Node y) {
-        removeFromChildList(y, x);
-        y.degree--;
-        mergeWithRootList(x);
-        x.parent = null;
-        x.childCut = false;
+    private void cut(Node nodeToCut, Node parentNode) {
+        removeFromChildList(parentNode, nodeToCut);
+        parentNode.degree--;
+        mergeWithRootList(nodeToCut);
+        nodeToCut.parent = null;
+        nodeToCut.isChildCut = false;
     }
 
-    private void cascadingCut(Node y) {
-        Node z = y.parent;
-        if (z != null) {
-            if (!y.childCut) {
-                y.childCut = true;
+    private void cascadingCut(Node parentNode) {
+        Node grandparentNode = parentNode.parent;
+        if (grandparentNode != null) {
+            if (!parentNode.isChildCut) {
+                parentNode.isChildCut = true;
             } else {
-                cut(y, z);
-                cascadingCut(z);
+                cut(parentNode, grandparentNode);
+                cascadingCut(grandparentNode);
             }
         }
     }
@@ -162,58 +161,58 @@ class FibonacciHeap {
         List<Node> nodes = new ArrayList<>();
         if (head == null) return nodes;
 
-        Node current = head;
+        Node currentNode = head;
         do {
-            nodes.add(current);
-            current = current.right;
-        } while (current != head);
+            nodes.add(currentNode);
+            currentNode = currentNode.right;
+        } while (currentNode != head);
 
         return nodes;
     }
 
     private void consolidate() {
-        int maxDegree = (int) (Math.log(size) / Math.log(2)) + 10;
-        List<Node> A = new ArrayList<>(Collections.nCopies(maxDegree, null));
+        int maxDegree = (int) (Math.log(heapSize) / Math.log(2)) + 10;
+        List<Node> nodeArray = new ArrayList<>(Collections.nCopies(maxDegree, null));
 
-        List<Node> nodes = iterate(min);
+        List<Node> nodes = iterate(minimumNode);
 
-        for (Node w : nodes) {
-            Node x = w;
-            int d = x.degree;
-            while (A.get(d) != null) {
-                Node y = A.get(d);
+        for (Node currentNode : nodes) {
+            Node x = currentNode;
+            int degree = x.degree;
+            while (nodeArray.get(degree) != null) {
+                Node y = nodeArray.get(degree);
                 if (x.key > y.key) {
                     Node temp = x;
                     x = y;
                     y = temp;
                 }
                 link(y, x);
-                A.set(d, null);
-                d++;
+                nodeArray.set(degree, null);
+                degree++;
             }
-            A.set(d, x);
+            nodeArray.set(degree, x);
         }
 
-        min = null;
-        for (Node node : A) {
+        minimumNode = null;
+        for (Node node : nodeArray) {
             if (node != null) {
-                if (min == null || node.key < min.key) {
-                    min = node;
+                if (minimumNode == null || node.key < minimumNode.key) {
+                    minimumNode = node;
                 }
             }
         }
     }
 
-    private void link(Node y, Node x) {
-        removeFromRootList(y);
-        y.left = y.right = y;
-        x.child = mergeWithChildList(x.child, y);
-        y.parent = x;
-        x.degree++;
-        y.childCut = false;
+    private void link(Node childNode, Node parentNode) {
+        removeFromRootList(childNode);
+        childNode.left = childNode.right = childNode; // Isolate the child
+        parentNode.child = mergeWithChildList(parentNode.child, childNode);
+        childNode.parent = parentNode;
+        parentNode.degree++;
+        childNode.isChildCut = false;
     }
 
     public boolean isEmpty() {
-        return min == null;
+        return minimumNode == null;
     }
 }
