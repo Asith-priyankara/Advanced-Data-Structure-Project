@@ -2,8 +2,14 @@ import java.io.*;
 import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
+
 public class Dijkstra {
     private static final int INF = Integer.MAX_VALUE;
+
+    public enum DataStructure {
+        LEFTIST_TREE,
+        FIBONACCI_HEAP
+    }
 
     public static void main(String[] args) {
         if (args.length < 2) {
@@ -27,14 +33,14 @@ public class Dijkstra {
                     System.out.println("Leftist tree mode : -l filename");
                     return;
                 }
-                runUserInputMode(args[1], true);
+                runUserInputMode(args[1], DataStructure.LEFTIST_TREE);
                 break;
             case "-f":
                 if (args.length != 2) {
                     System.out.println("Fibonacci heap mode : -f filename");
                     return;
                 }
-                runUserInputMode(args[1], false);
+                runUserInputMode(args[1], DataStructure.FIBONACCI_HEAP);
                 break;
             default:
                 System.out.println("Invalid mode");
@@ -43,12 +49,11 @@ public class Dijkstra {
 
     private static void runRandomMode(int n, double density, int source) {
         DijkstraAlgorithm graph = generateRandomGraph(n, density);
+        System.out.printf("Performance metrics for a graph with %d vertices and %.2f%% density:\n", n, density * 100);
 
         long leftistStartTime = System.nanoTime();
         List<Integer> leftistDistances = graph.dijkstraLeftist(source);
         long leftistTime = System.nanoTime() - leftistStartTime;
-
-        System.out.printf("Performance metrics for a graph with %d vertices and %.2f%% density:\n", n, density * 100);
 
         long fibonacciStartTime = System.nanoTime();
         List<Integer> fibDistances = graph.dijkstraFibonacci(source);
@@ -64,7 +69,7 @@ public class Dijkstra {
         }
     }
 
-    private static void runUserInputMode(String filename, boolean useLeftistTree) {
+    private static void runUserInputMode(String filename, DataStructure ds) {
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
             int source = Integer.parseInt(reader.readLine().trim());
             String[] nm = reader.readLine().trim().split(" ");
@@ -79,8 +84,14 @@ public class Dijkstra {
                 int cost = Integer.parseInt(edge[2]);
                 graph.addEdge(v1, v2, cost);
             }
-
-            List<Integer> dist = useLeftistTree ? graph.dijkstraLeftist(source) : graph.dijkstraFibonacci(source);
+            List<Integer> dist;
+            if (ds == DataStructure.LEFTIST_TREE) {
+                dist = graph.dijkstraLeftist(source);
+                System.out.printf("The shortest path distances are calculated using Leftist tree\n");
+            } else {
+                dist = graph.dijkstraFibonacci(source);
+                System.out.printf("The shortest path distances are calculated using Fibonacci heap\n");
+            }
             for (int i = 0; i < n; i++) {
                 System.out.printf("%d // cost from node %d to %d\n", dist.get(i) == INF ? "INF" : dist.get(i), source, i);
 
